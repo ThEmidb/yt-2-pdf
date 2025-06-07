@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube to PDF Converter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='U.png') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="main-container">
+        <div class="content-wrapper">
+            <div class="header">
+                <h1><i class="fas fa-file-pdf"></i> YouTube to PDF</h1>
+                <p class="subtitle">Convert YouTube videos to PDF notes with screenshots</p>
+            </div>
+            
+            <div class="card-container">
+                <div class="form-card">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">{{ message }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" onsubmit="handleSubmit(event)">
+                        <div class="form-group">
+                            <label for="url"><i class="fas fa-link"></i> YouTube URL</label>
+                            <input type="url" class="form-control" name="url" required
+                                   placeholder="https://youtube.com/watch?v=...">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="interval"><i class="fas fa-clock"></i> Capture Interval (seconds)</label>
+                            <input type="number" class="form-control" name="interval"
+                                   min="1" max="60" value="10" required>
+                        </div>
+                        
+                        <button type="submit" class="submit-btn" id="submitBtn">
+                            <span class="submit-text">Generate PDF</span>
+                            <span class="loading-dots d-none">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </span>
+                        </button>
+                    </form>
+                </div>
+                
+                <div class="info-card">
+                    <h3><i class="fas fa-info-circle"></i> How it works</h3>
+                    <ol>
+                        <li>Enter a YouTube video URL</li>
+                        <li>Set the interval between screenshots</li>
+                        <li>Click "Generate PDF"</li>
+                        <li>Download your PDF with video frames</li>
+                    </ol>
+                    <div class="features">
+                        <div class="feature">
+                            <i class="fas fa-check-circle"></i> High quality screenshots
+                        </div>
+                        <div class="feature">
+                            <i class="fas fa-check-circle"></i> Adjustable intervals
+                        </div>
+                        <div class="feature">
+                            <i class="fas fa-check-circle"></i> Fast processing
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>© 2023 YouTube to PDF Converter | Made with <i class="fas fa-heart"></i></p>
+        </footer>
+    </div>
+
+    <script>
+        function handleSubmit(event) {
+            event.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const submitText = btn.querySelector('.submit-text');
+            const loadingDots = btn.querySelector('.loading-dots');
+
+            btn.disabled = true;
+            submitText.classList.add('d-none');
+            loadingDots.classList.remove('d-none');
+
+            const formData = new FormData(event.target);
+            fetch('/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'video_screenshots.pdf';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(error => {
+                alert(`Error: ${error.message}`);
+            })
+            .finally(() => {
+                btn.disabled = false;
+                submitText.classList.remove('d-none');
+                loadingDots.classList.add('d-none');
+            });
+        }
+    </script>
+</body>
+</html>

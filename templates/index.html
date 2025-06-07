@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='U.png') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+
+    <link href="/static/icss.css" rel="stylesheet">
+    <!-- Embedding Fonts from google fonts -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Dancing+Script:wght@700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet" />
+    <!-- Font Awesome for social icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <title>UTUBE2PDF - Youtube to PDF</title>
+
+</head>
+<body>
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+    
+    <div class="onep" id="home">
+    <img src="{{ url_for('static', filename='UTUBE2PDF.png') }}" alt="UTUBE2PDF" class="logo">
+    
+    <p class="tagline">A Flask-powered tool to convert YT videos into PDFs using frame</p>
+    
+    <div class="code-block">git clone https://dub.sh/utube2pdf</div>
+    
+    <div class="button-row">
+        <a href="/main" class="button playground">Playground</a>
+        <a href="https://github.com/puspendusantra/youtube-to-pdf" class="button view-source">View Source</a>
+    </div>
+    
+    <p class="credits">Made by <a href="#team_members">@team_members</a></p>
+    </div>
+
+    <div class="doc" id="doc">
+        <div class="doc-home">
+            <h1>Documentation</h1>
+
+            <p>A comprehensive tool that downloads YouTube videos, extracts frames at custom intervals, and compiles them into printable PDF documents.</p>
+
+            <div class="divider-container">
+                <div class="divider"></div>
+                <div class="divider"></div>
+            </div>
+
+            <div class="grid-section">
+                <div class="doc-block">
+                    <h2>Flask Configuration</h2>
+                    <p>The web interface built with Flask handles user requests and manages the conversion pipeline.</p>
+
+                    <h3>Core Setup</h3>
+                    <pre><code>from flask import Flask, render_template, request
+
+app = Flask(__name__)
+app.secret_key = 'development-key'  # Change for production
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB limit</code></pre>
+
+                    <h3>Template Rendering</h3>
+                    <p>Uses Jinja2 templates for dynamic HTML generation:</p>
+                    <pre><code>@app.route('/')
+def index():
+return render_template('index.html', 
+title='Video Converter')</code></pre>
+                </div>
+
+                <div class="doc-block">
+                    <h2>Route Management</h2>
+                    <p>Endpoint configuration for handling user interactions.</p>
+
+                    <h3>Form Processing</h3>
+                    <pre><code>@app.route('/convert', methods=['POST'])
+    def convert_video():
+    url = request.form['video_url']
+    interval = int(request.form['interval'])
+
+    # Process video
+    return send_file(output_pdf, as_attachment=True)</code></pre>
+
+                    <h3>Error Handling</h3>
+                    <pre><code>@app.errorhandler(413)
+    def request_entity_too_large(error):
+    return "File too large (max 100MB)", 413</code></pre>
+                </div>
+            </div>
+
+            <div class="divider-container">
+                <div class="divider"></div>
+                <div class="divider"></div>
+            </div>
+
+            <div class="grid-section">
+                <div class="doc-block">
+                    <h2>Video Processing</h2>
+                    <p>YouTube content downloading and frame extraction pipeline.</p>
+
+                    <h3>Video Download</h3>
+                    <pre><code>ydl_opts = {
+    'format': 'best',
+    'outtmpl': 'downloads/%(title)s.%(ext)s',
+    'quiet': True
+    }
+
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+    info_dict = ydl.extract_info(url, download=True)
+    video_path = ydl.prepare_filename(info_dict)</code></pre>
+
+                    <h3>Metadata Extraction</h3>
+                    <pre><code>duration = info_dict.get('duration', 0)
+    title = info_dict.get('title', 'untitled')
+    thumbnail = info_dict.get('thumbnail', '')</code></pre>
+                </div>
+
+                <div class="doc-block">
+                    <h2>Frame Capture</h2>
+                    <p>OpenCV-based frame extraction at user-specified intervals.</p>
+
+                    <h3>Frame Extraction</h3>
+                    <pre><code>cap = cv2.VideoCapture(video_path)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    frame_interval = int(fps * interval_seconds)
+    for i in range(0, total_frames, frame_interval):
+    cap.set(cv2.CAP_PROP_POS_FRAMES, i)
+    ret, frame = cap.read()
+    if ret:
+        cv2.imwrite(f"frames/frame_{i}.jpg", frame)</code></pre>
+
+                    <h3>Image Processing</h3>
+                    <pre><code># Convert to grayscale
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    # Resize to 1280x720
+    resized = cv2.resize(gray, (1280, 720))</code></pre>
+                </div>
+            </div>
+
+            <div class="divider-container">
+                <div class="divider"></div>
+                <div class="divider"></div>
+            </div>
+
+            <div class="grid-section">
+                <div class="doc-block">
+                    <h2>PDF Generation</h2>
+                    <p>Compilation of extracted frames into printable PDF documents.</p>
+
+                    <h3>PDF Creation</h3>
+                    <pre><code>from fpdf import FPDF
+
+    pdf = FPDF(orientation='L', unit='mm', format='A4')
+    pdf.set_auto_page_break(False)
+
+    for frame in sorted_frames:
+    pdf.add_page()
+    pdf.image(frame, x=10, y=10, w=277, h=150, 
+             type='JPG', link='')</code></pre>
+
+                    <h3>Output Options</h3>
+                    <pre><code># Landscape A4 (297x210mm)
+    pdf.output("output.pdf", "F")  # Save to file
+    # or return as Flask response
+    return send_file("output.pdf")</code></pre>
+                </div>
+
+                <div class="doc-block">
+                    <h2>System Requirements</h2>
+                    <p>Dependencies and environment configuration.</p>
+
+                    <h3>Python Packages</h3>
+                    <pre><code>Flask==3.0.2
+    opencv-python-headless==4.9.0.80
+    yt-dlp==2025.2.19
+    fpdf2==2.7.8
+    Pillow==10.2.0
+    numpy==1.26.4</code></pre>
+
+                    <h3>Directory Structure</h3>
+                    <pre><code>~
+    |-- app.py
+    |-- templates
+    |   `-- index.html
+    |-- downloads/
+    |-- frames/
+    `-- outputs/</code></pre>
+                </div>
+            </div>
+
+            <div class="divider-container">
+                <div class="divider"></div>
+                <div class="divider"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="our-team" id="team_members">
+        <section class="team">
+            <div class="section-header">
+                <h2 class="section-heading" style="font-family: Pacifico;">Meet Our Team</h2>
+                <p class="section-subtitle">The creative minds behind our success</p>
+            </div>
+            <div class="container">
+                <div class="profile">
+                    <div class="profile-img-container">
+                        <div class="profile-border"></div>
+                        <div class="profile-img-wrapper">
+                            <img src="https://images.unsplash.com/photo-1595152772835-219674b2a8a6?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" alt="Kalyan"/>
+                        </div>
+                        <div class="profile-overlay">
+                            <div class="social-links">
+                                <a href="#"><i class="fab fa-linkedin"></i></a>
+                                <a href="#"><i class="fab fa-facebook"></i></a>
+                                <a href="#"><i class="fab fa-github"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="name">Kalyan</span>
+                    <span class="role">Creative Director</span>
+                </div>
+
+                <div class="profile">
+                    <div class="profile-img-container">
+                        <div class="profile-border"></div>
+                        <div class="profile-img-wrapper">
+                            <img src="https://images.unsplash.com/photo-1530577197743-7adf14294584?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=801&q=80" alt="Suchitra Tiwari"/>
+                        </div>
+                        <div class="profile-overlay">
+                            <div class="social-links">
+                                <a href="#"><i class="fab fa-linkedin"></i></a>
+                                <a href="#"><i class="fab fa-facebook"></i></a>
+                                <a href="#"><i class="fab fa-github"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="name">Suchitra Tiwari</span>
+                    <span class="role">Lead Designer</span>
+                </div>
+
+                <div class="profile">
+                    <div class="profile-img-container">
+                        <div class="profile-border"></div>
+                        <div class="profile-img-wrapper">
+                            <img src="https://images.unsplash.com/photo-1598641795816-a84ac9eac40c?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=801&q=80" alt="Sajid Ghani"/>
+                        </div>
+                        <div class="profile-overlay">
+                            <div class="social-links">
+                                <a href="#"><i class="fab fa-linkedin"></i></a>
+                                <a href="#"><i class="fab fa-facebook"></i></a>
+                                <a href="#"><i class="fab fa-github"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="name">Sajid Ghani</span>
+                    <span class="role">Tech Lead</span>
+                </div>
+
+                <div class="profile">
+                    <div class="profile-img-container">
+                        <div class="profile-border"></div>
+                        <div class="profile-img-wrapper">
+                            <img src="https://images.unsplash.com/photo-1484186139897-d5fc6b908812?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" alt="Dhriti"/>
+                        </div>
+                        <div class="profile-overlay">
+                            <div class="social-links">
+                                <a href="#"><i class="fab fa-linkedin"></i></a>
+                                <a href="#"><i class="fab fa-facebook"></i></a>
+                                <a href="#"><i class="fab fa-github"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="name">Dhriti</span>
+                    <span class="role">Marketing Specialist</span>
+                </div>
+
+                <div class="profile">
+                    <div class="profile-img-container">
+                        <div class="profile-border"></div>
+                        <div class="profile-img-wrapper">
+                            <img src="https://images.unsplash.com/photo-1618018352910-72bdafdc82a6?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" alt="Milind"/>
+                        </div>
+                        <div class="profile-overlay">
+                            <div class="social-links">
+                                <a href="#"><i class="fab fa-linkedin"></i></a>
+                                <a href="#"><i class="fab fa-facebook"></i></a>
+                                <a href="#"><i class="fab fa-github"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="name">Milind</span>
+                    <span class="role">UX Researcher</span>
+                </div>
+
+                <div class="profile">
+                    <div class="profile-img-container">
+                        <div class="profile-border"></div>
+                        <div class="profile-img-wrapper">
+                            <img src="https://images.unsplash.com/photo-1529068755536-a5ade0dcb4e8?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=801&q=80" alt="Srikant Tiwari"/>
+                        </div>
+                        <div class="profile-overlay">
+                            <div class="social-links">
+                                <a href="#"><i class="fab fa-linkedin"></i></a>
+                                <a href="#"><i class="fab fa-facebook"></i></a>
+                                <a href="#"><i class="fab fa-github"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="name">Srikant Tiwari</span>
+                    <span class="role">Product Manager</span>
+                </div>
+            </div>
+        </section>
+    </div>
+    
+    <footer class="footer">
+        <p>© 2025 YouTube to PDF Converter | Made with 
+            <span class="love-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="#ff5733" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                </svg>
+            </span>
+        </p>
+    </footer>
+    
+    <script>
+        // Add smooth scrolling behavior
+        document.addEventListener('DOMContentLoaded', function() {
+        // Temporarily disable smooth scrolling during page load
+        document.documentElement.style.scrollBehavior = 'auto';
+
+        // Restore scroll position if it was saved (like after refresh)
+        if (window.location.hash) {
+            const target = document.querySelector(window.location.hash);
+            if (target) {
+                setTimeout(() => {
+                    window.scrollTo(0, target.offsetTop - 20);
+                }, 0);
+            }
+        }
+
+        // Re-enable smooth scrolling after initial load
+        setTimeout(() => {
+            document.documentElement.style.scrollBehavior = 'smooth';
+        }, 1000);
+
+        // Rest of your existing code...
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 20,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+
+            
+            // Create Intersection Observer for scroll animations
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    }
+                });
+            }, {
+                threshold: 0.1
+            });
+            
+            // Observe all elements that need animation
+            document.querySelectorAll('.doc, .our-team, .doc-home h1, .doc-home h2, .doc-home h3, .doc-home .divider-container, .doc-home .grid-section, .doc-home .doc-block, .doc-home pre, .doc-home .note, .doc-home p, .section-header, .section-subtitle, .profile').forEach(el => {
+                observer.observe(el);
+            });
+            
+            // Create scroll progress indicator
+            window.addEventListener('scroll', () => {
+                const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+                const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+                const scrolled = (winScroll / height) * 100;
+                document.getElementById('progressBar').style.width = scrolled + '%';
+            });
+        });
+    </script>
+</body>
+</html>
