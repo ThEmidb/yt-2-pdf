@@ -45,8 +45,7 @@ def download_video(url, filename, max_retries=3):
     ydl_opts = {
         'outtmpl': filename,
         'format': 'bestvideo[height<=720][ext=mp4]/bestvideo[height<=480][ext=mp4]',
-        'ignoreerrors': True,
-        'cookiefile': './cookies.txt'
+        'ignoreerrors': True
     }
     for retry in range(max_retries):
         try:
